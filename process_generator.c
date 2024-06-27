@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   // 5. Send the information to the scheduler at the appropriate time.
   sendProcesses();
   // 6. Clear clock resources
-  destroyClk(true);
+  destroyClk(false);
 }
 
 int countLines(FILE* file) {
@@ -77,13 +77,11 @@ void readFile(void) {
 }
 
 void getAlgorithm(void) {
-  printf("[1]HPF   [2]SRTN   [3]RR\n");
+  printf("[0]HPF   [1]SRTN   [2]RR\n");
   printf("Please, choose a scheduling algo: ");
   scanf("%d", &algo);  // NOLINT
   switch (algo) {
-    case 0:
-      break;
-    case 1:
+    case 0 || 1:
       break;
     case 2:
       printf("Enter the quantum size: ");
@@ -145,8 +143,6 @@ void sendProcesses(void) {
         i++;
       }
     }
-  }
-  while (true) {
   }
 }
 
