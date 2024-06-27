@@ -7,6 +7,12 @@
 #ifndef _DEFS_H_
 #define _DEFS_H_
 
+/**************** Global Macros *****************/
+#define __FILE_KEY_NAME__ "keyfile"
+#define __FILE_KEY_VAL__ 65
+#define __MSG_TYPE__ 10
+/************************************************/
+
 /**
  * @brief Enum defining different scheduling algorithms.
  */

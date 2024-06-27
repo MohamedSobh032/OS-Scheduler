@@ -5,8 +5,6 @@
 #ifndef _CIRC_QUEUE_H_
 #define _CIRC_QUEUE_H_
 
-#include "../headers.h"
-
 /**
  * @brief Structure representing a node in the circular queue.
  */

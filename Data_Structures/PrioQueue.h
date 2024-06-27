@@ -5,8 +5,6 @@
 #ifndef _PRIO_QUEUE_H_
 #define _PRIO_QUEUE_H_
 
-#include "../headers.h"
-
 /**
  * @brief Structure representing a node in the priority queue.
  */

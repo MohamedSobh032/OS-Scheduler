@@ -11,11 +11,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "DEFS.h"
-
 typedef short bool;
 #define true 1
 #define false 0
+
+#include "DEFS.h"
+#include "Data_Structures/CircQueue.h"
+#include "Data_Structures/PrioQueue.h"
 
 #define SHKEY 300
 

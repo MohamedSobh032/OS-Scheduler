@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
   // 5. Send the information to the scheduler at the appropriate time.
   sendProcesses();
   // 6. Clear clock resources
-  destroyClk(false);
+  destroyClk(true);
 }
 
 /**
@@ -99,14 +99,16 @@ void getAlgorithm(void) {
   printf("Please, choose a scheduling algo: ");
   scanf("%d", &algo);  // NOLINT
   switch (algo) {
-    case 0 || 1:
+    case 0:
+      break;
+    case 1:
       break;
     case 2:
       printf("Enter the quantum size: ");
       scanf("%d", &quantumSize);  // NOLINT
       break;
     default:
-      perror("Wrong input");
+      perror("Wrong input algo");
       exit(-1);
       break;
   }
@@ -148,27 +150,23 @@ void forkClkandScheduler(void) {
  * time.
  */
 void sendProcesses(void) {
-  key_t key_id = ftok("keyfile", 1);
-  msg_id = msgget(key_id, IPC_CREAT | 0666);
+  key_t key_id = ftok(__FILE_KEY_NAME__, __FILE_KEY_VAL__);
+  msg_id = msgget(key_id, 0666 | IPC_CREAT);
   if (msg_id == -1) {
-    perror("Failed to create message queue");
+    perror("Error in create");
     exit(-1);
   }
-  msgbuff message;
+  struct msgbuff message;
+  message.mtype = __MSG_TYPE__;
   int i = 0;
   while (i < processesNum) {
     if (pcbArray[i].arrivalTime == getClk()) {
-      message.process = pcbArray[i];
-      int send_val =
-          msgsnd(msg_id, &message, sizeof(message.process), !IPC_NOWAIT);
-      if (send_val == -1) {
-        perror("Failed to send in message queue");
-        exit(-1);
-      } else {
-        i++;
-      }
+      message.process = pcbArray[i++];
+      msgsnd(msg_id, &message, sizeof(message.process), !IPC_NOWAIT);
     }
   }
+  while (1)
+    ;
 }
 
 /**
