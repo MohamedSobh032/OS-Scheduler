@@ -1,15 +1,21 @@
+/**
+ * @file process_generator.c
+ * @brief Generates processes to send to the scheduler, takes the wanted
+ * algorithm from the user as well as the quantum size
+ */
+
 #include "headers.h"
 
 /******************** MACROS ********************/
-#define __PROCESSES_FILE__ "processes.txt"
+#define __PROCESSES_FILE__ "processes.txt" /**< Default processes file */
 /************************************************/
 
 /*************** Global Variables ***************/
-int processesNum;  // NOLINT
-PCB* pcbArray;     // NOLINT
-int algo;          // NOLINT
-int quantumSize;   // NOLINT
-int msg_id;        // NOLINT
+static int processesNum; /**< Number of processes */          // NOLINT
+static PCB* pcbArray; /**< Array of PCBs */                   // NOLINT
+static int algo; /**< Chosen scheduling algorithm */          // NOLINT
+static int quantumSize; /**< Quantum size for Round Robin */  // NOLINT
+static int msg_id; /**< Message queue ID */                   // NOLINT
 /************************************************/
 
 /************* Function Definitions *************/
@@ -37,6 +43,12 @@ int main(int argc, char* argv[]) {
   destroyClk(false);
 }
 
+/**
+ * @brief Counts the number of lines in a given file.
+ *
+ * @param file Pointer to the file to be counted.
+ * @return Number of lines in the file.
+ */
 int countLines(FILE* file) {
   int count = 0;
   char buffer[50];
@@ -46,6 +58,9 @@ int countLines(FILE* file) {
   return count;
 }
 
+/**
+ * @brief Reads process information from a file and initializes PCBs.
+ */
 void readFile(void) {
   FILE* file = fopen(__PROCESSES_FILE__, "r");
   if (file == NULL) {
@@ -76,6 +91,9 @@ void readFile(void) {
   }
 }
 
+/**
+ * @brief Prompts user to select a scheduling algorithm and set its parameters.
+ */
 void getAlgorithm(void) {
   printf("[0]HPF   [1]SRTN   [2]RR\n");
   printf("Please, choose a scheduling algo: ");
@@ -94,6 +112,9 @@ void getAlgorithm(void) {
   }
 }
 
+/**
+ * @brief Forks clock and scheduler processes.
+ */
 void forkClkandScheduler(void) {
   // Fork clock
   int clock_pid = fork();
@@ -122,6 +143,10 @@ void forkClkandScheduler(void) {
   }
 }
 
+/**
+ * @brief Sends processes to scheduler via message queue based on their arrival
+ * time.
+ */
 void sendProcesses(void) {
   key_t key_id = ftok("keyfile", 1);
   msg_id = msgget(key_id, IPC_CREAT | 0666);
@@ -146,6 +171,11 @@ void sendProcesses(void) {
   }
 }
 
+/**
+ * @brief Cleans up resources like message queue upon receiving SIGINT signal.
+ *
+ * @param signum Signal number received.
+ */
 void clearResources(int signum) {
   msgctl(msg_id, IPC_RMID, NULL);
   printf("IPC instances are destroyed\n");
