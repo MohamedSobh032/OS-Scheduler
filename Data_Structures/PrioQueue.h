@@ -85,6 +85,7 @@ void Prio_Queue_enqueue(Prio_Queue* q, int prio, PCB process) {
  */
 PCB Prio_Queue_dequeue(Prio_Queue* q) {
   struct PCB emptyPCB;
+  emptyPCB.id = -1;
   // Check if the queue is empty
   if (q->head == NULL) {
     fprintf(stderr, "Memory allocation failed.\n");
