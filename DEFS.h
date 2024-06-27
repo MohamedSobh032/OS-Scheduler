@@ -30,7 +30,7 @@ typedef enum {
 /**
  * @brief Struct representing Process Control Block (PCB) for a process.
  */
-typedef struct {
+typedef struct PCB {
   int id;             /**< Unique identifier of the PCB */
   int PID;            /**< Process ID */
   int arrivalTime;    /**< Time at which the process arrives */
