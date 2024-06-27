@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>  //if you don't use scanf/printf change this include
 #include <stdlib.h>
@@ -10,7 +11,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
 typedef short bool;
 #define true 1
 #define false 0

@@ -80,13 +80,13 @@ void readFile(void) {
   fgets(buffer, sizeof(buffer), file);
   // Read and parse each PCB line
   while (fgets(buffer, sizeof(buffer), file)) {
-    sscanf(buffer, "%d %d %d %d", &pcbArray[index].id,  // NOLINT
+    sscanf(buffer, "%d %d %d %d %d", &pcbArray[index].id,  // NOLINT
            &pcbArray[index].arrivalTime, &pcbArray[index].runTime,
-           &pcbArray[index].prio);
+           &pcbArray[index].prio, &pcbArray[index].memory);
     pcbArray[index].PID = 0;
     pcbArray[index].startTime = 0;
     pcbArray[index].endTime = 0;
-    pcbArray[index].state = UNKNOWN;
+    pcbArray[index].state = _UNKNOWN;
     index++;
   }
 }
@@ -100,8 +100,10 @@ void getAlgorithm(void) {
   scanf("%d", &algo);  // NOLINT
   switch (algo) {
     case 0:
+      quantumSize = 0;
       break;
     case 1:
+      quantumSize = 0;
       break;
     case 2:
       printf("Enter the quantum size: ");

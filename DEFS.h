@@ -25,26 +25,29 @@ typedef enum {
 /**
  * @brief Enum defining different states of a process.
  */
-typedef enum {
-  UNKNOWN = 0,   /**< Unknown state */
-  READY = 1,     /**< Ready state */
-  RUNNING = 2,   /**< Running state */
-  BLOCKED = 3,   /**< Blocked state */
-  TERMINATED = 4 /**< Terminated state */
+typedef enum ProcessState {
+  _UNKNOWN = 0,   /**< Unknown state */
+  _NEW = 1,       /**< New Process state */
+  _READY = 2,     /**< Ready state */
+  _RUNNING = 3,   /**< Running state */
+  _BLOCKED = 4,   /**< Blocked state */
+  _TERMINATED = 5 /**< Terminated state */
 } ProcessState;
 
 /**
  * @brief Struct representing Process Control Block (PCB) for a process.
  */
 typedef struct PCB {
-  int id;             /**< Unique identifier of the PCB */
-  int PID;            /**< Process ID */
-  int arrivalTime;    /**< Time at which the process arrives */
-  int startTime;      /**< Time at which the process starts execution */
-  int runTime;        /**< Total runtime required by the process */
-  int endTime;        /**< Time at which the process finishes execution */
-  int prio;           /**< Priority of the process */
-  ProcessState state; /**< Current state of the process */
+  int id;          /**< Unique identifier of the PCB */
+  int PID;         /**< Process ID */
+  int arrivalTime; /**< Time at which the process arrives */
+  int startTime;   /**< Time at which the process starts execution */
+  int runTime;     /**< Total runtime required by the process */
+  int waitTime;    /**< Total waited time from start to end of the run */
+  int endTime;     /**< Time at which the process finishes execution */
+  int prio;        /**< Priority of the process */
+  int memory;      /**< Memory required to allocate */
+  enum ProcessState state; /**< Current state of the process */
 } PCB;
 
 /**
