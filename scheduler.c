@@ -145,11 +145,34 @@ void HPF(void) {
   Prio_Queue_Init(&q);    /**< Initialize the priority queue */
   /****************************************************************************/
 
-  while ((receivedProcesses <= processNumber) || !Prio_Queue_isEmpty(&q)) {
+  while ((receivedProcesses < processNumber) || !Prio_Queue_isEmpty(&q) ||
+         (currently == true)) {
     /***************************** Receive Process ****************************/
     rec = rec_msg_queue();
     if (rec.id != -1) {
       Prio_Queue_enqueue(&q, rec.prio, rec);
+      /* Print Statement */
+      printf("At time = %d, received process with ID = %d\n", getClk(), rec.id);
+      if (currently == false) {
+        /* Dequeue the head of the queue (highest priority process) */
+        process = Prio_Queue_dequeue(&q);
+        if (process.id != -1) {
+          /* Fork new process */
+          int process_id = fork();
+          if (process_id == -1) {
+            perror("Error in forking of a process ");
+            exit(-1);
+          } else if (process_id == 0) {  // Child
+            execl("./process.out", "process.out", NULL);
+          } else {  // Parent
+            currently = true;
+            process.startTime = oldClk;
+            process.PID = process_id;
+            printf("At time = %d, new process with ID = %d started running\n",
+                   oldClk, process.id);
+          }
+        }
+      }
     }
     /**************************************************************************/
 
@@ -174,6 +197,8 @@ void HPF(void) {
             currently = true;
             process.startTime = oldClk;
             process.PID = process_id;
+            printf("At time = %d, new process with ID = %d started running\n",
+                   oldClk, process.id);
           }
         }
       }
@@ -187,6 +212,32 @@ void HPF(void) {
           currently = false;
           process.endTime = oldClk;
           kill(process.PID, SIGKILL);
+          /* Print statement */
+          printf("At time = %d, process with ID = %d, has finished\n", oldClk,
+                 process.id);
+          /* Start new process */
+          /* Dequeue the head of the queue (highest priority process) */
+          process = Prio_Queue_dequeue(&q);
+          if (process.id != -1) {
+            /* Fork new process */
+            int process_id = fork();
+            if (process_id == -1) {
+              perror("Error in forking of a process ");
+              exit(-1);
+            } else if (process_id == 0) {  // Child
+              execl("./process.out", "process.out", NULL);
+            } else {  // Parent
+              currently = true;
+              process.startTime = oldClk;
+              process.PID = process_id;
+              printf("At time = %d, new process with ID = %d started running\n",
+                     oldClk, process.id);
+            }
+          }
+        } else {
+          /* Print statement */
+          printf("At time = %d, ID = %d, remaining time = %d\n", oldClk,
+                 process.id, process.remainingTime);
         }
       }
       /************************************************************************/
