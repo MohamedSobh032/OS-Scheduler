@@ -56,6 +56,29 @@ int main(int argc, char* argv[]) {
   destroyClk(true);
 }
 
+/**
+ * @brief Receive a process message from a message queue.
+ *
+ * This function attempts to receive a process message from a message queue
+ * identified by `msg_id`. If a message is received successfully, it initializes
+ * a PCB structure with the received process's parameters and increments the
+ * count of received processes.
+ *
+ * @details
+ * - Uses `msgrcv` to receive a message from the message queue.
+ * - Initializes a PCB structure with process parameters upon successful
+ * receipt.
+ * - Handles errors during the message reception process, including checking for
+ *   the absence of messages (ENOMSG).
+ *
+ * @note
+ * - Assumes the existence of a message queue identified by `msg_id`.
+ * - Assumes a message structure (`message`) containing process parameters.
+ * - Sets `pcb.id` to `-1` if no message is received or an error occurs.
+ *
+ * @return struct PCB The PCB structure initialized with received process
+ * parameters, if no received process, returns a process with id = -1.
+ */
 struct PCB rec_msg_queue(void) {
   /* Create the returned structure */
   struct PCB pcb;
@@ -84,14 +107,42 @@ struct PCB rec_msg_queue(void) {
   return pcb;
 }
 
+/**
+ * @brief Highest Priority First (HPF) scheduling algorithm.
+ *
+ * This function implements the HPF scheduling algorithm using a priority queue.
+ * It receives processes from a message queue, prioritizes them based on their
+ * priority, and executes them accordingly using fork and exec.
+ *
+ * @details
+ * - Initializes necessary variables and structures.
+ * - Continuously receives processes until all processes are received and
+ *   the priority queue is empty.
+ * - Iterates in time steps (each second) and handles process forking,
+ *   execution, and termination.
+ *
+ * @note
+ * - Uses functions from Prio_Queue module for queue operations.
+ * - Uses getClk() to get current clock time.
+ * - Uses kill() to terminate processes.
+ *
+ * @warning
+ * - Assumes the existence of Prio_Queue_init(), Prio_Queue_enqueue(),
+ *   Prio_Queue_dequeue(), Prio_Queue_isEmpty(), Prio_Queue_Inc_WaitingTime(),
+ *   and rec_msg_queue() functions.
+ * - Uses SIGKILL to forcefully terminate processes.
+ *
+ * @param None
+ * @return None
+ */
 void HPF(void) {
   /****************************** Initialization ******************************/
-  int oldClk = getClk();  /* Clock counter */
-  struct PCB rec;         /* PCB to receive processes */
-  struct Prio_Queue q;    /* Priority queue to implement the algorithm */
-  struct PCB process;     /* Process to be currently executed */
-  bool currently = false; /* Currently running a process */
-  Prio_Queue_Init(&q);    /* Initialize the priority queue */
+  int oldClk = getClk();  /**< Clock counter */
+  struct PCB rec;         /**< PCB to receive processes */
+  struct Prio_Queue q;    /**< Priority queue to implement the algorithm */
+  struct PCB process;     /**< Process to be currently executed */
+  bool currently = false; /**< Currently running a process */
+  Prio_Queue_Init(&q);    /**< Initialize the priority queue */
   /****************************************************************************/
 
   while ((receivedProcesses <= processNumber) || !Prio_Queue_isEmpty(&q)) {
@@ -112,7 +163,6 @@ void HPF(void) {
         /* Dequeue the head of the queue (highest priority process) */
         process = Prio_Queue_dequeue(&q);
         if (process.id != -1) {
-          currently = true;
           /* Fork new process */
           int process_id = fork();
           if (process_id == -1) {
@@ -121,6 +171,7 @@ void HPF(void) {
           } else if (process_id == 0) {  // Child
             execl("./process.out", "process.out", NULL);
           } else {  // Parent
+            currently = true;
             process.startTime = oldClk;
             process.PID = process_id;
           }
@@ -130,10 +181,10 @@ void HPF(void) {
 
       /************************** NORMAL PROCESSING  **************************/
       else {
-        currently = false;
         process.remainingTime--;
         /* Destroy the running process */
         if (process.remainingTime == 0) {
+          currently = false;
           process.endTime = oldClk;
           kill(process.PID, SIGKILL);
         }
