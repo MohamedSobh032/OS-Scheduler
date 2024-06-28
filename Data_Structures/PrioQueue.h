@@ -86,7 +86,6 @@ PCB Prio_Queue_dequeue(Prio_Queue* q) {
   emptyPCB.id = -1;
   // Check if the queue is empty
   if (q->head == NULL) {
-    fprintf(stderr, "Memory allocation failed.\n");
     return emptyPCB;
   }
 
@@ -111,5 +110,24 @@ PCB Prio_Queue_dequeue(Prio_Queue* q) {
  * @return true if the priority queue is empty, false otherwise.
  */
 bool Prio_Queue_isEmpty(Prio_Queue* q) { return (bool)(q->head == NULL); }
+
+/**
+ * @brief Increments the waiting time of all process in the priority queue.
+ *
+ * @param q Pointer to the priority queue.
+ * @param time Current time.
+ */
+void Prio_Queue_Inc_WaitingTime(Prio_Queue* q, int time) {
+  if (q->head == NULL) {
+    return;
+  }
+  struct Prio_Node* current = q->head;
+  while (current != NULL) {
+    if (current->process.arrivalTime < time) {
+      current->process.waitTime++;
+    }
+    current = current->next;
+  }
+}
 
 #endif /* _PRIO_QUEUE_H_ */

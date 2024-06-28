@@ -14,15 +14,6 @@
 /************************************************/
 
 /**
- * @brief Enum defining different scheduling algorithms.
- */
-typedef enum {
-  HPF = 0,  /**< Highest Priority First */
-  SRTN = 1, /**< Shortest Remaining Time Next */
-  RR = 2    /**< Round Robin */
-} algorithm;
-
-/**
  * @brief Enum defining different states of a process.
  */
 typedef enum ProcessState {
@@ -38,15 +29,16 @@ typedef enum ProcessState {
  * @brief Struct representing Process Control Block (PCB) for a process.
  */
 typedef struct PCB {
-  int id;          /**< Unique identifier of the PCB */
-  int PID;         /**< Process ID */
-  int arrivalTime; /**< Time at which the process arrives */
-  int startTime;   /**< Time at which the process starts execution */
-  int runTime;     /**< Total runtime required by the process */
-  int waitTime;    /**< Total waited time from start to end of the run */
-  int endTime;     /**< Time at which the process finishes execution */
-  int prio;        /**< Priority of the process */
-  int memory;      /**< Memory required to allocate */
+  int id;            /**< Unique identifier of the PCB */
+  int PID;           /**< Process ID */
+  int arrivalTime;   /**< Time at which the process arrives */
+  int startTime;     /**< Time at which the process starts execution */
+  int runTime;       /**< Total runtime required by the process */
+  int remainingTime; /**< Decrementer to get the remaining time */
+  int waitTime;      /**< Total waited time from start to end of the run */
+  int endTime;       /**< Time at which the process finishes execution */
+  int prio;          /**< Priority of the process */
+  int memory;        /**< Memory required to allocate */
   enum ProcessState state; /**< Current state of the process */
 } PCB;
 

@@ -7,16 +7,20 @@
 /************************************************/
 
 /*************** Global Variables ***************/
-static int msg_id;              // NOLINT
-static ssize_t rec_val;         // NOLINT
 static int processNumber;       // NOLINT
 static int algo;                // NOLINT
 static int quantumSize;         // NOLINT
+static int msg_id;              // NOLINT
+static ssize_t rec_val;         // NOLINT
 static struct msgbuff message;  // NOLINT
+static int receivedProcesses;   // NOLINT
 /************************************************/
 
 /************* Function Definitions *************/
 struct PCB rec_msg_queue(void);
+void HPF(void);
+void SRTN(void);
+void RR(void);
 /************************************************/
 
 int main(int argc, char* argv[]) {
@@ -33,6 +37,19 @@ int main(int argc, char* argv[]) {
   processNumber = atoi(argv[__PROCESS_NUMBER_ID__]);
   algo = atoi(argv[__ALGORITHM_NUMBER_ID__]);
   quantumSize = atoi(argv[__QUANTUM_SIZE_ID__]);
+  /****************************************************************************/
+
+  /**************************** Algorithm Choosing ****************************/
+  if (algo == 0) {
+    /* Highest Priority First */
+    HPF();
+  } else if (algo == 1) {
+    /* Shortest Remaining Time Next */
+    SRTN();
+  } else if (algo == 2) {
+    /* Round Robin */
+    RR();
+  }
   /****************************************************************************/
 
   // upon termination release the clock resources.
@@ -54,10 +71,81 @@ struct PCB rec_msg_queue(void) {
     /* Recieve the new process and initialize its parameters */
     pcb.id = message.process.id;
     pcb.arrivalTime = message.process.arrivalTime;
-    pcb.startTime = message.process.startTime;
+    pcb.runTime = message.process.runTime;
     pcb.prio = message.process.prio;
+    pcb.memory = message.process.memory;
+    /* Set unreceived data */
+    pcb.remainingTime = message.process.runTime;
     pcb.state = _NEW;
     pcb.waitTime = 0;
+    /* Increment received process number */
+    receivedProcesses++;
   }
   return pcb;
 }
+
+void HPF(void) {
+  /****************************** Initialization ******************************/
+  int oldClk = getClk();  /* Clock counter */
+  struct PCB rec;         /* PCB to receive processes */
+  struct Prio_Queue q;    /* Priority queue to implement the algorithm */
+  struct PCB process;     /* Process to be currently executed */
+  bool currently = false; /* Currently running a process */
+  Prio_Queue_Init(&q);    /* Initialize the priority queue */
+  /****************************************************************************/
+
+  while ((receivedProcesses <= processNumber) || !Prio_Queue_isEmpty(&q)) {
+    /***************************** Receive Process ****************************/
+    rec = rec_msg_queue();
+    if (rec.id != -1) {
+      Prio_Queue_enqueue(&q, rec.prio, rec);
+    }
+    /**************************************************************************/
+
+    /******************************** TIME STEP *******************************/
+    if ((getClk() - oldClk) == 1) {
+      /* Clock handling to iterate each second */
+      oldClk = getClk();
+
+      /************************** NEW PROCESS FORKING *************************/
+      if (currently == false) {
+        /* Dequeue the head of the queue (highest priority process) */
+        process = Prio_Queue_dequeue(&q);
+        if (process.id != -1) {
+          currently = true;
+          /* Fork new process */
+          int process_id = fork();
+          if (process_id == -1) {
+            perror("Error in forking of a process ");
+            exit(-1);
+          } else if (process_id == 0) {  // Child
+            execl("./process.out", "process.out", NULL);
+          } else {  // Parent
+            process.startTime = oldClk;
+            process.PID = process_id;
+          }
+        }
+      }
+      /************************************************************************/
+
+      /************************** NORMAL PROCESSING  **************************/
+      else {
+        currently = false;
+        process.remainingTime--;
+        /* Destroy the running process */
+        if (process.remainingTime == 0) {
+          process.endTime = oldClk;
+          kill(process.PID, SIGKILL);
+        }
+      }
+      /************************************************************************/
+
+      Prio_Queue_Inc_WaitingTime(&q, oldClk);
+    }
+    /**************************************************************************/
+  }
+}
+
+void SRTN(void) {}
+
+void RR(void) {}
