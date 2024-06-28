@@ -53,6 +53,7 @@ void Circ_Queue_enqueue(Circ_Queue* q, PCB process) {
   } else {
     newNode->next = q->head;
     q->tail->next = newNode;
+    q->tail = newNode;
   }
 }
 
@@ -67,23 +68,19 @@ PCB Circ_Queue_dequeue(Circ_Queue* q) {
   emptyPCB.id = -1;
   // Check if the queue is empty
   if (q->head == NULL) {
-    fprintf(stderr, "Memory allocation failed.\n");
     return emptyPCB;
   }
-
   // Remove the node from the head of the queue
   struct _Node* temp = q->head;
   emptyPCB = temp->process;
-  q->head = q->head->next;
-
-  // If the queue is now empty, update tail to NULL
-  free(temp);
-  if (q->head == NULL) {
+  if (q->head->next == NULL) {
+    q->head = NULL;
     q->tail = NULL;
   } else {
+    q->head = q->head->next;
     q->tail->next = q->head;
   }
-
+  free(temp);
   return emptyPCB;
 }
 
@@ -94,5 +91,27 @@ PCB Circ_Queue_dequeue(Circ_Queue* q) {
  * @return true if the circular queue is empty, false otherwise.
  */
 bool Circ_Queue_isEmpty(Circ_Queue* q) { return (bool)(q->head == NULL); }
+
+/**
+ * @brief Increments the waiting time of all process in the circular queue.
+ *
+ * @param q Pointer to the circular queue.
+ * @param time Current time.
+ */
+void Circ_Queue_Inc_WaitingTime(Circ_Queue* q, int time) {
+  if (q->head == NULL) {
+    return;
+  }
+  struct _Node* current = q->head;
+  while (current != q->tail) {
+    if (current->process.arrivalTime < time) {
+      current->process.waitTime++;
+    }
+    current = current->next;
+  }
+  if (current->process.arrivalTime < time) {
+    current->process.waitTime++;
+  }
+}
 
 #endif /* _CIRC_QUEUE_H_ */

@@ -374,4 +374,101 @@ void SRTN(void) {
   }
 }
 
-void RR(void) {}
+void RR(void) {
+  printf("============= RR =============\n");
+  /****************************** Initialization ******************************/
+  int oldClk = getClk();  /**< Clock counter */
+  struct PCB rec;         /**< PCB to receive processes */
+  struct Circ_Queue q;    /**< Circular queue to implement the algorithm */
+  struct PCB process;     /**< Process to be currently executed */
+  bool currently = false; /**< Currently running a process */
+  Circ_Queue_Init(&q);    /**< Initialize the priority queue */
+  process.id = -1;        /**< To disable unreasonable stopping */
+  /****************************************************************************/
+
+  while ((receivedProcesses < processNumber) || !Circ_Queue_isEmpty(&q) ||
+         (currently == true)) {
+    /***************************** Receive Process ****************************/
+    rec = rec_msg_queue();
+    if (rec.id != -1) {
+      Circ_Queue_enqueue(&q, rec);
+      /* Print Statement */
+      printf("At time = %d, received process with ID = %d\n", getClk(), rec.id);
+      if (currently == false) {
+        currently = true;
+        int process_id = fork();
+        if (process_id == -1) {
+          perror("Error in forking of a process ");
+          exit(-1);
+        } else if (process_id == 0) {  // Child
+          execl("./process.out", "process.out", NULL);
+        } else {  // Parent
+          process = Circ_Queue_dequeue(&q);
+          process.startTime = oldClk;
+          process.PID = process_id;
+          process.state = _RUNNING;
+          printf("At time = %d, new process with ID = %d started running\n",
+                 oldClk, process.id);
+        }
+      }
+    }
+    /**************************************************************************/
+
+    /******************************** TIME STEP *******************************/
+    if (getClk() - oldClk == quantumSize) {
+      Circ_Queue_Inc_WaitingTime(&q, oldClk);
+      oldClk = getClk();
+
+      /***************************** PAUSE RUNNING ****************************/
+      if (process.id != -1 && process.state == _RUNNING) {
+        currently = false;
+        /* Pause it from running */
+        kill(process.PID, SIGSTOP);
+        /* Decrement the remaining time */
+        process.remainingTime -= quantumSize;
+        if (process.remainingTime <= 0) {
+          /* Kill the process */
+          kill(process.PID, SIGKILL);
+          /* Print statement */
+          printf("At time = %d, process with ID = %d, has finished\n", oldClk,
+                 process.id);
+        } else {
+          /* Set its state to ready to be run */
+          process.state = _READY;
+          /* Insert it back into the queue */
+          Circ_Queue_enqueue(&q, process);
+          /* Print statement */
+          printf("At time = %d, ID = %d, remaining time = %d\n", oldClk,
+                 process.id, process.remainingTime);
+        }
+      }
+      /************************************************************************/
+
+      /*************************** NORMAL PROCESSING **************************/
+      process = Circ_Queue_dequeue(&q);
+      if (process.id != -1) {
+        currently = true;
+        if (process.state == _READY) {
+          process.state = _RUNNING;
+          kill(process.PID, SIGCONT);
+        } else if (process.state == _NEW) {
+          int process_id = fork();
+          if (process_id == -1) {
+            perror("Error in forking of a process ");
+            exit(-1);
+          } else if (process_id == 0) {  // Child
+            execl("./process.out", "process.out", NULL);
+          } else {  // Parent
+            process.startTime = oldClk;
+            process.PID = process_id;
+            process.state = _RUNNING;
+            printf("At time = %d, new process with ID = %d started running\n",
+                   oldClk, process.id);
+          }
+        }
+      }
+      /************************************************************************/
+    }
+    /**************************************************************************/
+  }
+}
