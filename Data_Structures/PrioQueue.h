@@ -57,7 +57,7 @@ void Prio_Queue_enqueue(Prio_Queue* q, int prio, PCB process) {
     struct Prio_Node* current = q->head;
     struct Prio_Node* prev = NULL;
     // Traverse the queue to find the correct position based on priority
-    while (current != NULL && current->prio <= prio) {
+    while (current != NULL && current->prio < prio) {
       prev = current;
       current = current->next;
     }

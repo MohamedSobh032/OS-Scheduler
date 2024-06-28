@@ -127,9 +127,6 @@ struct PCB rec_msg_queue(void) {
  * - Uses kill() to terminate processes.
  *
  * @warning
- * - Assumes the existence of Prio_Queue_init(), Prio_Queue_enqueue(),
- *   Prio_Queue_dequeue(), Prio_Queue_isEmpty(), Prio_Queue_Inc_WaitingTime(),
- *   and rec_msg_queue() functions.
  * - Uses SIGKILL to forcefully terminate processes.
  *
  * @param None
@@ -168,6 +165,7 @@ void HPF(void) {
             currently = true;
             process.startTime = oldClk;
             process.PID = process_id;
+            process.state = _RUNNING;
             printf("At time = %d, new process with ID = %d started running\n",
                    oldClk, process.id);
           }
@@ -197,6 +195,7 @@ void HPF(void) {
             currently = true;
             process.startTime = oldClk;
             process.PID = process_id;
+            process.state = _RUNNING;
             printf("At time = %d, new process with ID = %d started running\n",
                    oldClk, process.id);
           }
@@ -204,7 +203,7 @@ void HPF(void) {
       }
       /************************************************************************/
 
-      /************************** NORMAL PROCESSING  **************************/
+      /*************************** NORMAL PROCESSING **************************/
       else {
         process.remainingTime--;
         /* Destroy the running process */
@@ -230,6 +229,7 @@ void HPF(void) {
               currently = true;
               process.startTime = oldClk;
               process.PID = process_id;
+              process.state = _RUNNING;
               printf("At time = %d, new process with ID = %d started running\n",
                      oldClk, process.id);
             }
@@ -241,13 +241,137 @@ void HPF(void) {
         }
       }
       /************************************************************************/
-
       Prio_Queue_Inc_WaitingTime(&q, oldClk);
     }
     /**************************************************************************/
   }
 }
 
-void SRTN(void) {}
+/**
+ * @brief Shortest Remaining Time Next (SRTN) scheduling algorithm.
+ *
+ * This function implements the SRTN scheduling algorithm using processes
+ * received from a message queue. It manages process execution based on their
+ * remaining time to complete, using process suspension and resumption to ensure
+ * the shortest job is always running.
+ *
+ * The function manages process forking, signaling (SIGSTOP, SIGCONT, SIGKILL),
+ * and updates the state of each process in a priority queue.
+ *
+ * @details
+ * - Initializes necessary variables and structures.
+ * - Continuously receives processes until all processes are received and
+ *   the priority queue is empty.
+ * - Iterates in time steps (each second) and handles process forking,
+ *   execution, and termination.
+ *
+ * @note
+ * - Uses functions from Prio_Queue module for queue operations.
+ * - Uses getClk() to get current clock time.
+ * - Uses kill() to terminate processes.
+ *
+ * @warning
+ * - Uses SIGKILL to forcefully terminate processes.
+ *
+ * @param None
+ * @return None
+ */
+void SRTN(void) {
+  printf("============ SRTN ============\n");
+  /****************************** Initialization ******************************/
+  int oldClk = getClk();  /**< Clock counter */
+  struct PCB rec;         /**< PCB to receive processes */
+  struct Prio_Queue q;    /**< Priority queue to implement the algorithm */
+  struct PCB process;     /**< Process to be currently executed */
+  bool currently = false; /**< Currently running a process */
+  Prio_Queue_Init(&q);    /**< Initialize the priority queue */
+  process.id = -1;        /**< To disable unreasonable stopping */
+  /****************************************************************************/
+
+  while ((receivedProcesses < processNumber) || !Prio_Queue_isEmpty(&q) ||
+         (currently == true)) {
+    /***************************** Receive Process ****************************/
+    rec = rec_msg_queue();
+    if (rec.id != -1) {
+      Prio_Queue_enqueue(&q, rec.remainingTime, rec);
+      /* Print Statement */
+      printf("At time = %d, received process with ID = %d\n", getClk(), rec.id);
+      if (currently == false) {
+        currently = true;
+        int process_id = fork();
+        if (process_id == -1) {
+          perror("Error in forking of a process ");
+          exit(-1);
+        } else if (process_id == 0) {  // Child
+          execl("./process.out", "process.out", NULL);
+        } else {  // Parent
+          process = Prio_Queue_dequeue(&q);
+          process.startTime = oldClk;
+          process.PID = process_id;
+          process.state = _RUNNING;
+          printf("At time = %d, new process with ID = %d started running\n",
+                 oldClk, process.id);
+        }
+      }
+    }
+    /**************************************************************************/
+
+    /******************************** TIME STEP *******************************/
+    if (getClk() - oldClk == 1) {
+      oldClk = getClk();
+      /***************************** PAUSE RUNNING ****************************/
+      if (process.id != -1 && process.state == _RUNNING) {
+        currently = false;
+        /* Pause it from running */
+        kill(process.PID, SIGSTOP);
+        /* Decrement the remaining time */
+        process.remainingTime--;
+        if (process.remainingTime == 0) {
+          /* Kill the process */
+          kill(process.PID, SIGKILL);
+          /* Print statement */
+          printf("At time = %d, process with ID = %d, has finished\n", oldClk,
+                 process.id);
+        } else {
+          /* Set its state to ready to be run */
+          process.state = _READY;
+          /* Insert it back into the queue */
+          Prio_Queue_enqueue(&q, process.remainingTime, process);
+          /* Print statement */
+          printf("At time = %d, ID = %d, remaining time = %d\n", oldClk,
+                 process.id, process.remainingTime);
+        }
+      }
+      /************************************************************************/
+
+      /*************************** NORMAL PROCESSING **************************/
+      process = Prio_Queue_dequeue(&q);
+      if (process.id != -1) {
+        currently = true;
+        if (process.state == _READY) {
+          process.state = _RUNNING;
+          kill(process.PID, SIGCONT);
+        } else if (process.state == _NEW) {
+          int process_id = fork();
+          if (process_id == -1) {
+            perror("Error in forking of a process ");
+            exit(-1);
+          } else if (process_id == 0) {  // Child
+            execl("./process.out", "process.out", NULL);
+          } else {  // Parent
+            process.startTime = oldClk;
+            process.PID = process_id;
+            process.state = _RUNNING;
+            printf("At time = %d, new process with ID = %d started running\n",
+                   oldClk, process.id);
+          }
+        }
+      }
+      /************************************************************************/
+      Prio_Queue_Inc_WaitingTime(&q, oldClk);
+    }
+    /**************************************************************************/
+  }
+}
 
 void RR(void) {}
