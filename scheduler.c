@@ -135,6 +135,7 @@ struct PCB rec_msg_queue(void) {
  * @return None
  */
 void HPF(void) {
+  printf("============ SRTN ============\n");
   /****************************** Initialization ******************************/
   int oldClk = getClk();  /**< Clock counter */
   struct PCB rec;         /**< PCB to receive processes */
@@ -296,8 +297,7 @@ void HPF(void) {
  */
 void SRTN(void) {
   printf("============ SRTN ============\n");
-  /****************************** Initialization
-   * ******************************/
+  /****************************** Initialization ******************************/
   int oldClk = getClk();  /**< Clock counter */
   struct PCB rec;         /**< PCB to receive processes */
   struct Prio_Queue q;    /**< Priority queue to implement the algorithm */
@@ -309,40 +309,42 @@ void SRTN(void) {
 
   while ((receivedProcesses < processNumber) || !Prio_Queue_isEmpty(&q) ||
          (currently == true)) {
-    /***************************** Receive Process
-     * ****************************/
+    /***************************** Receive Process ****************************/
     rec = rec_msg_queue();
     if (rec.id != -1) {
       Prio_Queue_enqueue(&q, rec.remainingTime, rec);
       /* Print Statement */
       printf("At time = %d, received process with ID = %d\n", getClk(), rec.id);
       if (currently == false) {
-        currently = true;
-        int process_id = fork();
-        if (process_id == -1) {
-          perror("Error in forking of a process ");
-          exit(-1);
-        } else if (process_id == 0) {  // Child
-          execl("./process.out", "process.out", NULL);
-        } else {  // Parent
-          process = Prio_Queue_dequeue(&q);
-          process.startTime = oldClk;
-          process.PID = process_id;
-          process.state = _RUNNING;
-          printf("At time = %d, new process with ID = %d started running\n",
-                 oldClk, process.id);
+        process = Prio_Queue_dequeue(&q);
+        process.memPointer = allocate(process.memory);
+        if (process.memPointer == NULL) {
+          Prio_Queue_enqueue(&q, process.remainingTime, process);
+        } else {
+          int process_id = fork();
+          if (process_id == -1) {
+            perror("Error in forking of a process ");
+            exit(-1);
+          } else if (process_id == 0) {  // Child
+            execl("./process.out", "process.out", NULL);
+          } else {  // Parent
+            currently = true;
+            process.startTime = oldClk;
+            process.PID = process_id;
+            process.state = _RUNNING;
+            printf("At time = %d, new process with ID = %d started running\n",
+                   oldClk, process.id);
+          }
         }
       }
     }
     /**************************************************************************/
 
-    /******************************** TIME STEP
-     * *******************************/
+    /******************************** TIME STEP *******************************/
     if (getClk() - oldClk == 1) {
       Prio_Queue_Inc_WaitingTime(&q, oldClk);
       oldClk = getClk();
-      /***************************** PAUSE RUNNING
-       * ****************************/
+      /**************************** PAUSE RUNNING *****************************/
       if (process.id != -1 && process.state == _RUNNING) {
         currently = false;
         /* Pause it from running */
@@ -352,6 +354,8 @@ void SRTN(void) {
         if (process.remainingTime == 0) {
           /* Kill the process */
           kill(process.PID, SIGKILL);
+          /* Deallocate the memory */
+          deallocate(process.memPointer);
           /* Print statement */
           printf("At time = %d, process with ID = %d, has finished\n", oldClk,
                  process.id);
@@ -367,27 +371,32 @@ void SRTN(void) {
       }
       /************************************************************************/
 
-      /*************************** NORMAL PROCESSING
-       * **************************/
+      /*************************** NORMAL PROCESSING **************************/
       process = Prio_Queue_dequeue(&q);
       if (process.id != -1) {
-        currently = true;
         if (process.state == _READY) {
+          currently = true;
           process.state = _RUNNING;
           kill(process.PID, SIGCONT);
         } else if (process.state == _NEW) {
-          int process_id = fork();
-          if (process_id == -1) {
-            perror("Error in forking of a process ");
-            exit(-1);
-          } else if (process_id == 0) {  // Child
-            execl("./process.out", "process.out", NULL);
-          } else {  // Parent
-            process.startTime = oldClk;
-            process.PID = process_id;
-            process.state = _RUNNING;
-            printf("At time = %d, new process with ID = %d started running\n",
-                   oldClk, process.id);
+          process.memPointer = allocate(process.memory);
+          if (process.memPointer == NULL) {
+            Prio_Queue_enqueue(&q, process.remainingTime, process);
+          } else {
+            int process_id = fork();
+            if (process_id == -1) {
+              perror("Error in forking of a process ");
+              exit(-1);
+            } else if (process_id == 0) {  // Child
+              execl("./process.out", "process.out", NULL);
+            } else {  // Parent
+              currently = true;
+              process.startTime = oldClk;
+              process.PID = process_id;
+              process.state = _RUNNING;
+              printf("At time = %d, new process with ID = %d started running\n",
+                     oldClk, process.id);
+            }
           }
         }
       }
