@@ -452,41 +452,43 @@ void RR(void) {
 
   while ((receivedProcesses < processNumber) || !Circ_Queue_isEmpty(&q) ||
          (currently == true)) {
-    /***************************** Receive Process
-     * ****************************/
+    /***************************** Receive Process ****************************/
     rec = rec_msg_queue();
     if (rec.id != -1) {
       Circ_Queue_enqueue(&q, rec);
       /* Print Statement */
       printf("At time = %d, received process with ID = %d\n", getClk(), rec.id);
       if (currently == false) {
-        currently = true;
-        int process_id = fork();
-        if (process_id == -1) {
-          perror("Error in forking of a process ");
-          exit(-1);
-        } else if (process_id == 0) {  // Child
-          execl("./process.out", "process.out", NULL);
-        } else {  // Parent
-          process = Circ_Queue_dequeue(&q);
-          process.startTime = oldClk;
-          process.PID = process_id;
-          process.state = _RUNNING;
-          printf("At time = %d, new process with ID = %d started running\n",
-                 oldClk, process.id);
+        process = Circ_Queue_dequeue(&q);
+        process.memPointer = allocate(process.memory);
+        if (process.memPointer == NULL) {
+          Circ_Queue_enqueue(&q, process);
+        } else {
+          int process_id = fork();
+          if (process_id == -1) {
+            perror("Error in forking of a process ");
+            exit(-1);
+          } else if (process_id == 0) {  // Child
+            execl("./process.out", "process.out", NULL);
+          } else {  // Parent
+            currently = true;
+            process.startTime = oldClk;
+            process.PID = process_id;
+            process.state = _RUNNING;
+            printf("At time = %d, new process with ID = %d started running\n",
+                   oldClk, process.id);
+          }
         }
       }
     }
     /**************************************************************************/
 
-    /******************************** TIME STEP
-     * *******************************/
+    /******************************* TIME STEP  *******************************/
     if (getClk() - oldClk == quantumSize) {
       Circ_Queue_Inc_WaitingTime(&q, oldClk);
       oldClk = getClk();
 
-      /***************************** PAUSE RUNNING
-       * ****************************/
+      /***************************** PAUSE RUNNING ****************************/
       if (process.id != -1 && process.state == _RUNNING) {
         currently = false;
         /* Pause it from running */
@@ -496,6 +498,8 @@ void RR(void) {
         if (process.remainingTime <= 0) {
           /* Kill the process */
           kill(process.PID, SIGKILL);
+          /* Deallocate the memory */
+          deallocate(process.memPointer);
           /* Print statement */
           printf("At time = %d, process with ID = %d, has finished\n", oldClk,
                  process.id);
@@ -511,27 +515,32 @@ void RR(void) {
       }
       /************************************************************************/
 
-      /*************************** NORMAL PROCESSING
-       * **************************/
+      /************************** NORMAL PROCESSING  **************************/
       process = Circ_Queue_dequeue(&q);
       if (process.id != -1) {
-        currently = true;
+        process.memPointer = allocate(process.memory);
         if (process.state == _READY) {
+          currently = true;
           process.state = _RUNNING;
           kill(process.PID, SIGCONT);
         } else if (process.state == _NEW) {
-          int process_id = fork();
-          if (process_id == -1) {
-            perror("Error in forking of a process ");
-            exit(-1);
-          } else if (process_id == 0) {  // Child
-            execl("./process.out", "process.out", NULL);
-          } else {  // Parent
-            process.startTime = oldClk;
-            process.PID = process_id;
-            process.state = _RUNNING;
-            printf("At time = %d, new process with ID = %d started running\n",
-                   oldClk, process.id);
+          if (process.memPointer == NULL) {
+            Circ_Queue_enqueue(&q, process);
+          } else {
+            int process_id = fork();
+            if (process_id == -1) {
+              perror("Error in forking of a process ");
+              exit(-1);
+            } else if (process_id == 0) {  // Child
+              execl("./process.out", "process.out", NULL);
+            } else {  // Parent
+              currently = true;
+              process.startTime = oldClk;
+              process.PID = process_id;
+              process.state = _RUNNING;
+              printf("At time = %d, new process with ID = %d started running\n",
+                     oldClk, process.id);
+            }
           }
         }
       }
