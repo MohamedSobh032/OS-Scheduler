@@ -40,6 +40,7 @@ typedef struct PCB {
   int prio;          /**< Priority of the process */
   int memory;        /**< Memory required to allocate */
   enum ProcessState state; /**< Current state of the process */
+  void* memPointer;        /**< Pointer to memory allocation */
 } PCB;
 
 /**

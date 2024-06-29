@@ -102,6 +102,7 @@ struct PCB rec_msg_queue(void) {
     pcb.remainingTime = message.process.runTime;
     pcb.state = _NEW;
     pcb.waitTime = 0;
+    pcb.memPointer = NULL;
     /* Increment received process number */
     receivedProcesses++;
   }
@@ -155,20 +156,25 @@ void HPF(void) {
         /* Dequeue the head of the queue (highest priority process) */
         process = Prio_Queue_dequeue(&q);
         if (process.id != -1) {
-          /* Fork new process */
-          int process_id = fork();
-          if (process_id == -1) {
-            perror("Error in forking of a process ");
-            exit(-1);
-          } else if (process_id == 0) {  // Child
-            execl("./process.out", "process.out", NULL);
-          } else {  // Parent
-            currently = true;
-            process.startTime = oldClk;
-            process.PID = process_id;
-            process.state = _RUNNING;
-            printf("At time = %d, new process with ID = %d started running\n",
-                   oldClk, process.id);
+          process.memPointer = allocate(process.memory);
+          if (process.memPointer == NULL) {
+            Prio_Queue_enqueue(&q, process.prio, process);
+          } else {
+            /* Fork new process */
+            int process_id = fork();
+            if (process_id == -1) {
+              perror("Error in forking of a process ");
+              exit(-1);
+            } else if (process_id == 0) {  // Child
+              execl("./process.out", "process.out", NULL);
+            } else {  // Parent
+              currently = true;
+              process.startTime = oldClk;
+              process.PID = process_id;
+              process.state = _RUNNING;
+              printf("At time = %d, new process with ID = %d started running\n",
+                     oldClk, process.id);
+            }
           }
         }
       }
@@ -186,40 +192,10 @@ void HPF(void) {
         process = Prio_Queue_dequeue(&q);
         if (process.id != -1) {
           /* Fork new process */
-          int process_id = fork();
-          if (process_id == -1) {
-            perror("Error in forking of a process ");
-            exit(-1);
-          } else if (process_id == 0) {  // Child
-            execl("./process.out", "process.out", NULL);
-          } else {  // Parent
-            currently = true;
-            process.startTime = oldClk;
-            process.PID = process_id;
-            process.state = _RUNNING;
-            printf("At time = %d, new process with ID = %d started running\n",
-                   oldClk, process.id);
-          }
-        }
-      }
-      /************************************************************************/
-
-      /*************************** NORMAL PROCESSING **************************/
-      else {
-        process.remainingTime--;
-        /* Destroy the running process */
-        if (process.remainingTime == 0) {
-          currently = false;
-          process.endTime = oldClk;
-          kill(process.PID, SIGKILL);
-          /* Print statement */
-          printf("At time = %d, process with ID = %d, has finished\n", oldClk,
-                 process.id);
-          /* Start new process */
-          /* Dequeue the head of the queue (highest priority process) */
-          process = Prio_Queue_dequeue(&q);
-          if (process.id != -1) {
-            /* Fork new process */
+          process.memPointer = allocate(process.memory);
+          if (process.memPointer == NULL) {
+            Prio_Queue_enqueue(&q, process.prio, process);
+          } else {
             int process_id = fork();
             if (process_id == -1) {
               perror("Error in forking of a process ");
@@ -233,6 +209,48 @@ void HPF(void) {
               process.state = _RUNNING;
               printf("At time = %d, new process with ID = %d started running\n",
                      oldClk, process.id);
+            }
+          }
+        }
+      }
+      /************************************************************************/
+
+      /*************************** NORMAL PROCESSING **************************/
+      else {
+        process.remainingTime--;
+        /* Destroy the running process */
+        if (process.remainingTime == 0) {
+          currently = false;
+          process.endTime = oldClk;
+          kill(process.PID, SIGKILL);
+          deallocate(process.memPointer);
+          /* Print statement */
+          printf("At time = %d, process with ID = %d, has finished\n", oldClk,
+                 process.id);
+          /* Start new process */
+          /* Dequeue the head of the queue (highest priority process) */
+          process = Prio_Queue_dequeue(&q);
+          if (process.id != -1) {
+            /* Fork new process */
+            process.memPointer = allocate(process.memory);
+            if (process.memPointer == NULL) {
+              Prio_Queue_enqueue(&q, process.prio, process);
+            } else {
+              int process_id = fork();
+              if (process_id == -1) {
+                perror("Error in forking of a process ");
+                exit(-1);
+              } else if (process_id == 0) {  // Child
+                execl("./process.out", "process.out", NULL);
+              } else {  // Parent
+                currently = true;
+                process.startTime = oldClk;
+                process.PID = process_id;
+                process.state = _RUNNING;
+                printf(
+                    "At time = %d, new process with ID = %d started running\n",
+                    oldClk, process.id);
+              }
             }
           }
         } else {
@@ -252,11 +270,11 @@ void HPF(void) {
  *
  * This function implements the SRTN scheduling algorithm using processes
  * received from a message queue. It manages process execution based on their
- * remaining time to complete, using process suspension and resumption to ensure
- * the shortest job is always running.
+ * remaining time to complete, using process suspension and resumption to
+ * ensure the shortest job is always running.
  *
- * The function manages process forking, signaling (SIGSTOP, SIGCONT, SIGKILL),
- * and updates the state of each process in a priority queue.
+ * The function manages process forking, signaling (SIGSTOP, SIGCONT,
+ * SIGKILL), and updates the state of each process in a priority queue.
  *
  * @details
  * - Initializes necessary variables and structures.
@@ -278,7 +296,8 @@ void HPF(void) {
  */
 void SRTN(void) {
   printf("============ SRTN ============\n");
-  /****************************** Initialization ******************************/
+  /****************************** Initialization
+   * ******************************/
   int oldClk = getClk();  /**< Clock counter */
   struct PCB rec;         /**< PCB to receive processes */
   struct Prio_Queue q;    /**< Priority queue to implement the algorithm */
@@ -290,7 +309,8 @@ void SRTN(void) {
 
   while ((receivedProcesses < processNumber) || !Prio_Queue_isEmpty(&q) ||
          (currently == true)) {
-    /***************************** Receive Process ****************************/
+    /***************************** Receive Process
+     * ****************************/
     rec = rec_msg_queue();
     if (rec.id != -1) {
       Prio_Queue_enqueue(&q, rec.remainingTime, rec);
@@ -316,11 +336,13 @@ void SRTN(void) {
     }
     /**************************************************************************/
 
-    /******************************** TIME STEP *******************************/
+    /******************************** TIME STEP
+     * *******************************/
     if (getClk() - oldClk == 1) {
       Prio_Queue_Inc_WaitingTime(&q, oldClk);
       oldClk = getClk();
-      /***************************** PAUSE RUNNING ****************************/
+      /***************************** PAUSE RUNNING
+       * ****************************/
       if (process.id != -1 && process.state == _RUNNING) {
         currently = false;
         /* Pause it from running */
@@ -345,7 +367,8 @@ void SRTN(void) {
       }
       /************************************************************************/
 
-      /*************************** NORMAL PROCESSING **************************/
+      /*************************** NORMAL PROCESSING
+       * **************************/
       process = Prio_Queue_dequeue(&q);
       if (process.id != -1) {
         currently = true;
@@ -378,15 +401,16 @@ void SRTN(void) {
  * @brief Round-Robin (RR) scheduling algorithm.
  *
  * This function implements the Round-Robin scheduling algorithm for process
- * management and execution. It handles processes received from a message queue,
- * manages their execution using forked processes, and ensures fair allocation
- * of CPU time using a fixed time quantum.
+ * management and execution. It handles processes received from a message
+ * queue, manages their execution using forked processes, and ensures fair
+ * allocation of CPU time using a fixed time quantum.
  *
- * The function manages process forking, signaling (SIGSTOP, SIGCONT, SIGKILL),
- * and updates the state of each process in a circular queue.
+ * The function manages process forking, signaling (SIGSTOP, SIGCONT,
+ * SIGKILL), and updates the state of each process in a circular queue.
  *
  * @details
- * - Initializes necessary variables and structures for managing the algorithm.
+ * - Initializes necessary variables and structures for managing the
+ * algorithm.
  * - Continuously receives processes until all processes are received and the
  *   circular queue is empty, while ensuring currently running processes are
  *   managed according to the Round-Robin scheduling policy.
@@ -406,7 +430,8 @@ void SRTN(void) {
  */
 void RR(void) {
   printf("============= RR =============\n");
-  /****************************** Initialization ******************************/
+  /****************************** Initialization
+   * ******************************/
   int oldClk = getClk();  /**< Clock counter */
   struct PCB rec;         /**< PCB to receive processes */
   struct Circ_Queue q;    /**< Circular queue to implement the algorithm */
@@ -418,7 +443,8 @@ void RR(void) {
 
   while ((receivedProcesses < processNumber) || !Circ_Queue_isEmpty(&q) ||
          (currently == true)) {
-    /***************************** Receive Process ****************************/
+    /***************************** Receive Process
+     * ****************************/
     rec = rec_msg_queue();
     if (rec.id != -1) {
       Circ_Queue_enqueue(&q, rec);
@@ -444,12 +470,14 @@ void RR(void) {
     }
     /**************************************************************************/
 
-    /******************************** TIME STEP *******************************/
+    /******************************** TIME STEP
+     * *******************************/
     if (getClk() - oldClk == quantumSize) {
       Circ_Queue_Inc_WaitingTime(&q, oldClk);
       oldClk = getClk();
 
-      /***************************** PAUSE RUNNING ****************************/
+      /***************************** PAUSE RUNNING
+       * ****************************/
       if (process.id != -1 && process.state == _RUNNING) {
         currently = false;
         /* Pause it from running */
@@ -474,7 +502,8 @@ void RR(void) {
       }
       /************************************************************************/
 
-      /*************************** NORMAL PROCESSING **************************/
+      /*************************** NORMAL PROCESSING
+       * **************************/
       process = Circ_Queue_dequeue(&q);
       if (process.id != -1) {
         currently = true;
