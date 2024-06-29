@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
   processNumber = atoi(argv[__PROCESS_NUMBER_ID__]);
   algo = atoi(argv[__ALGORITHM_NUMBER_ID__]);
   quantumSize = atoi(argv[__QUANTUM_SIZE_ID__]);
+  initializeBuddyAllocator();
   /****************************************************************************/
 
   /**************************** Algorithm Choosing ****************************/
@@ -373,6 +374,36 @@ void SRTN(void) {
   }
 }
 
+/**
+ * @brief Round-Robin (RR) scheduling algorithm.
+ *
+ * This function implements the Round-Robin scheduling algorithm for process
+ * management and execution. It handles processes received from a message queue,
+ * manages their execution using forked processes, and ensures fair allocation
+ * of CPU time using a fixed time quantum.
+ *
+ * The function manages process forking, signaling (SIGSTOP, SIGCONT, SIGKILL),
+ * and updates the state of each process in a circular queue.
+ *
+ * @details
+ * - Initializes necessary variables and structures for managing the algorithm.
+ * - Continuously receives processes until all processes are received and the
+ *   circular queue is empty, while ensuring currently running processes are
+ *   managed according to the Round-Robin scheduling policy.
+ * - Iterates in time steps (quantumSize) and handles process forking,
+ *   execution, pausing, and resuming.
+ *
+ * @note
+ * - Uses functions like getClk() to get current clock time.
+ * - Uses fork(), execl() for process creation and execution.
+ * - Uses kill() to manage process states (SIGSTOP, SIGCONT, SIGKILL).
+ *
+ * @warning
+ * - Uses SIGKILL to forcefully terminate processes.
+ *
+ * @param None
+ * @return None
+ */
 void RR(void) {
   printf("============= RR =============\n");
   /****************************** Initialization ******************************/

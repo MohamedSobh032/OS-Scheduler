@@ -18,6 +18,8 @@ typedef short bool;
 #include "DEFS.h"
 #include "Data_Structures/CircQueue.h"
 #include "Data_Structures/PrioQueue.h"
+#include "Data_Structures/Queue.h"
+#include "MemoryManager.h"
 
 #define SHKEY 300
 

@@ -8,17 +8,17 @@
 /**
  * @brief Structure representing a node in the circular queue.
  */
-typedef struct _Node {
-  struct PCB process; /**< Process Control Block */
-  struct _Node* next; /**< Pointer to the next node */
-} _Node;
+typedef struct Circ_Node {
+  struct PCB process;     /**< Process Control Block */
+  struct Circ_Node* next; /**< Pointer to the next node */
+} Circ_Node;
 
 /**
  * @brief Structure representing a circular queue.
  */
 typedef struct Circ_Queue {
-  struct _Node* head; /**< Pointer to the head of the queue */
-  struct _Node* tail; /**< Pointer to the tail of the queue */
+  struct Circ_Node* head; /**< Pointer to the head of the queue */
+  struct Circ_Node* tail; /**< Pointer to the tail of the queue */
 } Circ_Queue;
 
 /**
@@ -39,7 +39,7 @@ void Circ_Queue_Init(Circ_Queue* q) {
  */
 void Circ_Queue_enqueue(Circ_Queue* q, PCB process) {
   // Create new node
-  struct _Node* newNode = (_Node*)malloc(sizeof(_Node));
+  struct Circ_Node* newNode = (Circ_Node*)malloc(sizeof(Circ_Node));
   if (newNode == NULL) {
     fprintf(stderr, "Memory allocation failed.\n");
     return;
@@ -72,7 +72,7 @@ PCB Circ_Queue_dequeue(Circ_Queue* q) {
     return emptyPCB;
   }
   // Remove the node from the head of the queue
-  struct _Node* temp = q->head;
+  struct Circ_Node* temp = q->head;
   emptyPCB = temp->process;
   if (q->head == q->tail) {
     q->head = NULL;
@@ -103,7 +103,7 @@ void Circ_Queue_Inc_WaitingTime(Circ_Queue* q, int time) {
   if (q->head == NULL) {
     return;
   }
-  struct _Node* current = q->head;
+  struct Circ_Node* current = q->head;
   while (current != q->tail) {
     if (current->process.arrivalTime < time) {
       current->process.waitTime++;
