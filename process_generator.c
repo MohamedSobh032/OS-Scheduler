@@ -161,10 +161,11 @@ void sendProcesses(void) {
   struct msgbuff message;
   message.mtype = __MSG_TYPE__;
   int i = 0;
+  message.process = pcbArray[0];
   while (i < processesNum) {
     if (pcbArray[i].arrivalTime == getClk()) {
-      message.process = pcbArray[i++];
       msgsnd(msg_id, &message, sizeof(message.process), !IPC_NOWAIT);
+      message.process = pcbArray[++i];
     }
   }
   while (1)

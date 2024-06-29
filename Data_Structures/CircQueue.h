@@ -45,11 +45,12 @@ void Circ_Queue_enqueue(Circ_Queue* q, PCB process) {
     return;
   }
   newNode->process = process;
+  newNode->next = NULL;
   // case queue is empty
   if (q->head == NULL) {
-    newNode->next = newNode;
     q->head = newNode;
     q->tail = newNode;
+    newNode->next = newNode;
   } else {
     newNode->next = q->head;
     q->tail->next = newNode;
@@ -73,7 +74,7 @@ PCB Circ_Queue_dequeue(Circ_Queue* q) {
   // Remove the node from the head of the queue
   struct _Node* temp = q->head;
   emptyPCB = temp->process;
-  if (q->head->next == NULL) {
+  if (q->head == q->tail) {
     q->head = NULL;
     q->tail = NULL;
   } else {

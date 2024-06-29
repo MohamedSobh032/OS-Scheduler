@@ -176,7 +176,7 @@ void HPF(void) {
 
     /******************************** TIME STEP *******************************/
     if ((getClk() - oldClk) == 1) {
-      /* Clock handling to iterate each second */
+      Prio_Queue_Inc_WaitingTime(&q, oldClk);
       oldClk = getClk();
 
       /************************** NEW PROCESS FORKING *************************/
@@ -241,7 +241,6 @@ void HPF(void) {
         }
       }
       /************************************************************************/
-      Prio_Queue_Inc_WaitingTime(&q, oldClk);
     }
     /**************************************************************************/
   }
@@ -318,6 +317,7 @@ void SRTN(void) {
 
     /******************************** TIME STEP *******************************/
     if (getClk() - oldClk == 1) {
+      Prio_Queue_Inc_WaitingTime(&q, oldClk);
       oldClk = getClk();
       /***************************** PAUSE RUNNING ****************************/
       if (process.id != -1 && process.state == _RUNNING) {
@@ -368,7 +368,6 @@ void SRTN(void) {
         }
       }
       /************************************************************************/
-      Prio_Queue_Inc_WaitingTime(&q, oldClk);
     }
     /**************************************************************************/
   }
